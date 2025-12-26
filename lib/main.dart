@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme/app_theme.dart';
 import 'ui/onboarding/onboarding_screen.dart';
+import 'ui/home/home_screen.dart'; 
 import 'data/repositories/profile_repository.dart';
 
 void main() {
@@ -17,21 +18,20 @@ class CarteiraFamiliarApp extends ConsumerWidget {
       title: 'Carteira Familiar',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      // Usamos um FutureBuilder para decidir qual tela mostrar
       home: FutureBuilder(
         future: ref.read(profileRepositoryProvider).getProfile(),
         builder: (context, snapshot) {
-          // Enquanto verifica o banco, mostra um carregamento
+          
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Scaffold(body: Center(child: CircularProgressIndicator()));
           }
           
-          // Se o perfil existir (não for nulo), vai para a Home (vamos criar agora)
+          
           if (snapshot.hasData && snapshot.data != null) {
-            return const Scaffold(body: Center(child: Text("Bem-vindo de volta! (Home)")));
+            return const HomeScreen(); 
           }
           
-          // Se não tiver dados, mostra o Onboarding
+          
           return const OnboardingScreen();
         },
       ),
