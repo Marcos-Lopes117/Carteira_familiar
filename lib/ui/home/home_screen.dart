@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart'; 
 import '../../data/repositories/profile_repository.dart';
-import '../../providers/balance_provider.dart'; // Importe o balance provider
+import '../../providers/balance_provider.dart'; 
+import '../../data/local/app_database.dart'; // Import necessário para reconhecer 'Transaction'
 import '../onboarding/onboarding_screen.dart';
-import 'widgets/add_transaction_modal.dart'; // Importe o modal que criamos
+import 'widgets/add_transaction_modal.dart'; 
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -13,15 +14,14 @@ class HomeScreen extends ConsumerWidget {
     return NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$').format(value);
   }
 
-  // Função centralizada para abrir o modal de transação
-  void _openAddTransaction(BuildContext context) {
+  void _openAddTransaction(BuildContext context, {bool isIncome = false}) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) => const AddTransactionModal(),
+      builder: (context) => AddTransactionModal(initialIsIncome: isIncome),
     );
   }
 
@@ -52,8 +52,8 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Escutando o saldo em tempo real via Stream
     final balanceAsync = ref.watch(balanceStreamProvider);
+    final transactionsAsync = ref.watch(recentTransactionsProvider); // Escutando transações
     final profileRepo = ref.watch(profileRepositoryProvider);
 
     return Scaffold(
@@ -72,7 +72,6 @@ class HomeScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Saudação ainda via Future (muda pouco)
             FutureBuilder(
               future: profileRepo.getProfile(),
               builder: (context, snapshot) {
@@ -87,7 +86,6 @@ class HomeScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 20),
             
-            // Renderização do Card baseada no Estado do Stream
             balanceAsync.when(
               data: (balance) => _buildBalanceCard(context, balance),
               loading: () => const Center(child: CircularProgressIndicator()),
@@ -96,17 +94,16 @@ class HomeScreen extends ConsumerWidget {
             
             const SizedBox(height: 24),
             
-            // Atalhos Rápidos com funções de abrir modal
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 GestureDetector(
-                  onTap: () => _openAddTransaction(context),
-                  child: _buildQuickAction(context, Icons.add, 'Entrada', Colors.green)
+                  onTap: () => _openAddTransaction(context, isIncome: true),
+                  child: _buildQuickAction(context, Icons.add, 'Entrada', Colors.green),
                 ),
                 GestureDetector(
-                  onTap: () => _openAddTransaction(context),
-                  child: _buildQuickAction(context, Icons.remove, 'Saída', Colors.red)
+                  onTap: () => _openAddTransaction(context, isIncome: false),
+                child: _buildQuickAction(context, Icons.remove, 'Saída', Colors.red),
                 ),
                 _buildQuickAction(context, Icons.assessment, 'Relatório', Colors.blue),
               ],
@@ -116,21 +113,69 @@ class HomeScreen extends ConsumerWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Atividades Recentes', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                Text(
+                  'Atividades Recentes', 
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)
+                ),
                 TextButton(onPressed: () {}, child: const Text('Ver tudo')),
               ],
             ),
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 40),
-                child: Text('Nenhuma transação registrada ainda.'),
-              ),
+
+            // --- LISTA DE TRANSAÇÕES REAIS ---
+            transactionsAsync.when(
+              data: (transactions) {
+                if (transactions.isEmpty) {
+                  return const Center(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 40),
+                      child: Text('Nenhuma transação registrada ainda.'),
+                    ),
+                  );
+                }
+
+                return ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: transactions.length,
+                  itemBuilder: (context, index) {
+                    final tx = transactions[index];
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: CircleAvatar(
+                        backgroundColor: tx.isIncome 
+                            ? Colors.green.withOpacity(0.1) 
+                            : Colors.red.withOpacity(0.1),
+                        child: Icon(
+                          tx.isIncome ? Icons.arrow_upward : Icons.arrow_downward,
+                          color: tx.isIncome ? Colors.green : Colors.red,
+                          size: 20,
+                        ),
+                      ),
+                      title: Text(
+                        tx.description, 
+                        style: const TextStyle(fontWeight: FontWeight.w600)
+                      ),
+                      subtitle: Text(DateFormat('dd/MM/yyyy').format(tx.date)),
+                      trailing: Text(
+                        (tx.isIncome ? '+ ' : '- ') + _formatCurrency(tx.amount),
+                        style: TextStyle(
+                          color: tx.isIncome ? Colors.green : Colors.red,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (err, stack) => const Text('Erro ao carregar histórico'),
             ),
+            const SizedBox(height: 80), // Espaço para não cobrir pelo FAB
           ],
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _openAddTransaction(context),
+        onPressed: () => _openAddTransaction(context), 
         child: const Icon(Icons.add),
       ),
     );

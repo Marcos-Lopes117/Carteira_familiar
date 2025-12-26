@@ -74,4 +74,11 @@ class ProfileRepository {
       return baseIncome + totalItems;
     });
   }
+
+  Stream<List<Transaction>> watchRecentTransactions() {
+  return (_db.select(_db.transactions)
+        ..orderBy([(t) => OrderingTerm(expression: t.date, mode: OrderingMode.desc)])
+        ..limit(10)) 
+      .watch();
+}
 }
