@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme/app_theme.dart';
+import 'ui/onboarding/onboarding_screen.dart';
 
 void main() {
-  runApp(const CarteiraFamiliarApp());
+  runApp(
+    // O ProviderScope é obrigatório para o Riverpod funcionar
+    const ProviderScope(child: CarteiraFamiliarApp()),
+  );
 }
 
 class CarteiraFamiliarApp extends StatelessWidget {
@@ -13,13 +18,8 @@ class CarteiraFamiliarApp extends StatelessWidget {
     return MaterialApp(
       title: 'Carteira Familiar',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
-        useMaterial3: true,
-      ),
-      home: const Scaffold(
-        body: Center(child: Text('Bem-vindo à Carteira Familiar!')),
-      ),
+      theme: AppTheme.lightTheme,
+      home: const OnboardingScreen(),
     );
   }
 }
