@@ -1,15 +1,15 @@
 
-## Carteira Familiar
+# Carteira Familiar
 A gestão financeira da sua família em suas mãos
 
-#  Visão Geral
+##  Visão Geral
 
 Carteira Familiar é um aplicativo mobile de gestão financeira pessoal e familiar, desenvolvido com foco em organização, controle e privacidade.
 O aplicativo foi pensado para ajudar famílias a organizar o orçamento mensal, quitar dívidas, planejar economias e manter o controle financeiro, tudo isso sem depender de internet.
 
 Os dados são armazenados exclusivamente no dispositivo do usuário, garantindo segurança, privacidade e funcionamento offline.
 
-#  Público-Alvo
+##  Público-Alvo
 
 Famílias que desejam controlar gastos mensais
 
@@ -32,7 +32,7 @@ Qualquer pessoa que queira organizar a vida financeira sem complicação
 - Pensado para uso diário no mobile
 
 
-#  Arquitetura do Aplicativo
+##  Arquitetura do Aplicativo
 
 Plataforma: Flutter (Android / iOS)
 
@@ -45,7 +45,7 @@ Estado: Provider ou Riverpod
 Design: Material 3
 
 
-#  Planejamento e Economia
+##  Planejamento e Economia
 
 Acompanhamento da meta de economia
 
@@ -53,7 +53,7 @@ Visualização do quanto já foi economizado no mês
 
 Apoio à quitação de dívidas (registro de gastos e compromissos)
 
-#  Relatórios Simples
+##  Relatórios Simples
 
 Resumo mensal
 
@@ -62,7 +62,7 @@ Totais por categoria
 Visualização intuitiva (cards e gráficos)
 
 
-#  Fluxo do Aplicativo
+##  Fluxo do Aplicativo
 
 Splash
   ↓
@@ -75,7 +75,7 @@ Home
  └── Botão para nova transação
 
 
-#  Privacidade e Segurança
+##  Privacidade e Segurança
 
 Nenhum dado enviado para a internet
 
@@ -85,7 +85,7 @@ Sem coleta de informações pessoais externas
 
 Total controle do usuário sobre seus dados
 
-# Objetivo do Projeto (Portfólio)
+## Objetivo do Projeto (Portfólio)
 
 Este projeto foi desenvolvido para demonstrar:
 
@@ -99,6 +99,6 @@ UI/UX focado no usuário final
 
 Desenvolvimento mobile profissional com Flutter
 
-## Conclusão
+# Conclusão
 
 Carteira Familiar não é apenas um projeto de estudo, mas um aplicativo funcional, pensado para resolver um problema real do dia a dia das famílias brasileiras, com foco em simplicidade, eficiência e privacidade.
