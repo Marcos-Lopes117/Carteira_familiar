@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../data/repositories/profile_repository.dart';
+import '../home/home_screen.dart';
 
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
@@ -15,7 +17,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Pegamos a altura da tela para tornar a imagem responsiva
     final screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
@@ -27,22 +28,34 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                SizedBox(height: screenHeight * 0.05), // Espaçamento responsivo
+                SizedBox(height: screenHeight * 0.05),
                 
-                // --- IMAGEM RESPONSIVA ---
+                // --- AJUSTE DA IMAGEM ---
                 Center(
                   child: ConstrainedBox(
                     constraints: BoxConstraints(
-                      // A imagem ocupará no máximo 25% da altura da tela
                       maxHeight: screenHeight * 0.25,
                     ),
                     child: Image.asset(
                       'assets/carteira.png',
                       fit: BoxFit.contain,
+                      // Esse bloco ajuda a identificar se o caminho está errado
+                      errorBuilder: (context, error, stackTrace) {
+                        return const Column(
+                          children: [
+                            Icon(Icons.broken_image, size: 50, color: Colors.grey),
+                            Text(
+                              'Imagem não encontrada\nVerifique o pubspec.yaml',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 12, color: Colors.grey),
+                            ),
+                          ],
+                        );
+                      },
                     ),
                   ),
                 ),
-                
+
                 const SizedBox(height: 32),
                 Text(
                   'Bem-vindo à Carteira \nda sua Família',
@@ -59,13 +72,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 ),
                 const SizedBox(height: 40),
                 
-                // --- CAMPOS DE TEXTO ---
                 TextFormField(
                   controller: _nameController,
                   textCapitalization: TextCapitalization.words,
                   decoration: const InputDecoration(
                     labelText: 'Qual o sobrenome da família?',
-                    hintText: 'Ex: Silva, Oliveira...',
+                    hintText: 'Ex: Vangeloti, Lopes...',
                     border: OutlineInputBorder(),
                     prefixIcon: Icon(Icons.people),
                   ),
@@ -75,7 +87,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _incomeController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                   decoration: const InputDecoration(
                     labelText: 'Qual a renda mensal total?',
                     prefixText: 'R\$ ',
@@ -85,14 +99,23 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   validator: (value) =>
                       value == null || value.isEmpty ? 'Campo obrigatório' : null,
                 ),
-                
                 const SizedBox(height: 40),
-                
-                // --- BOTÃO ---
                 ElevatedButton(
-                  onPressed: () {
+                  onPressed: () async {
                     if (_formKey.currentState!.validate()) {
-                      // Próximo passo: Salvar no Banco de Dados
+                      final name = _nameController.text;
+                      final incomeText = _incomeController.text.replaceAll(',', '.');
+                      final income = double.tryParse(incomeText) ?? 0.0;
+
+                      await ref
+                          .read(profileRepositoryProvider)
+                          .saveProfile(name, income);
+
+                      if (mounted) {
+                        Navigator.of(context).pushReplacement(
+                          MaterialPageRoute(builder: (context) => const HomeScreen()),
+                        );
+                      }
                     }
                   },
                   style: ElevatedButton.styleFrom(
