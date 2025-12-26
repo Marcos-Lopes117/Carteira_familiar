@@ -65,13 +65,21 @@ Visualização intuitiva (cards e gráficos)
 ##  Fluxo do Aplicativo
 
 Splash
+
   ↓
+  
 Onboarding Financeiro (1ª vez)
+
   ↓
+  
 Home
+
  ├── Saldo atual
+ 
  ├── Resumo mensal
+ 
  ├── Lista de transações
+ 
  └── Botão para nova transação
 
 
