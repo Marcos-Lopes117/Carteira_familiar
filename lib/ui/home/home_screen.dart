@@ -2,14 +2,27 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart'; 
 import '../../data/repositories/profile_repository.dart';
+import '../../providers/balance_provider.dart'; // Importe o balance provider
 import '../onboarding/onboarding_screen.dart';
+import 'widgets/add_transaction_modal.dart'; // Importe o modal que criamos
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
-  // Formatador de moeda brasileiro (Ex: 5.000,00)
   String _formatCurrency(double value) {
     return NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$').format(value);
+  }
+
+  // Função centralizada para abrir o modal de transação
+  void _openAddTransaction(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => const AddTransactionModal(),
+    );
   }
 
   void _confirmDelete(BuildContext context, WidgetRef ref) {
@@ -39,6 +52,8 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Escutando o saldo em tempo real via Stream
+    final balanceAsync = ref.watch(balanceStreamProvider);
     final profileRepo = ref.watch(profileRepositoryProvider);
 
     return Scaffold(
@@ -52,64 +67,70 @@ class HomeScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: FutureBuilder(
-        future: profileRepo.getProfile(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          final profile = snapshot.data;
-          final name = profile?.name ?? 'Família';
-          final income = profile?.monthlyIncome ?? 0.0;
-
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Saudação ainda via Future (muda pouco)
+            FutureBuilder(
+              future: profileRepo.getProfile(),
+              builder: (context, snapshot) {
+                final name = snapshot.data?.name ?? 'Família';
+                return Text(
                   'Olá, Família $name!',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
+                );
+              },
+            ),
+            const SizedBox(height: 20),
+            
+            // Renderização do Card baseada no Estado do Stream
+            balanceAsync.when(
+              data: (balance) => _buildBalanceCard(context, balance),
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (err, stack) => const Text('Erro ao calcular saldo'),
+            ),
+            
+            const SizedBox(height: 24),
+            
+            // Atalhos Rápidos com funções de abrir modal
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                GestureDetector(
+                  onTap: () => _openAddTransaction(context),
+                  child: _buildQuickAction(context, Icons.add, 'Entrada', Colors.green)
                 ),
-                const SizedBox(height: 20),
-                
-                // Passamos a renda para o Card
-                _buildBalanceCard(context, income),
-                
-                const SizedBox(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _buildQuickAction(context, Icons.add, 'Entrada', Colors.green),
-                    _buildQuickAction(context, Icons.remove, 'Saída', Colors.red),
-                    _buildQuickAction(context, Icons.assessment, 'Relatório', Colors.blue),
-                  ],
+                GestureDetector(
+                  onTap: () => _openAddTransaction(context),
+                  child: _buildQuickAction(context, Icons.remove, 'Saída', Colors.red)
                 ),
-                const SizedBox(height: 32),
-                // ... resto da UI (Atividades Recentes) permanece igual
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Atividades Recentes', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-                    TextButton(onPressed: () {}, child: const Text('Ver tudo')),
-                  ],
-                ),
-                const Center(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: 40),
-                    child: Text('Nenhuma transação registrada ainda.'),
-                  ),
-                ),
+                _buildQuickAction(context, Icons.assessment, 'Relatório', Colors.blue),
               ],
             ),
-          );
-        },
+            
+            const SizedBox(height: 32),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Atividades Recentes', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                TextButton(onPressed: () {}, child: const Text('Ver tudo')),
+              ],
+            ),
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 40),
+                child: Text('Nenhuma transação registrada ainda.'),
+              ),
+            ),
+          ],
+        ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {},
+        onPressed: () => _openAddTransaction(context),
         child: const Icon(Icons.add),
       ),
     );
@@ -133,18 +154,18 @@ class HomeScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Saldo Total Disponível', style: TextStyle(color: Colors.white70, fontSize: 14)),
+          const Text('Saldo Atual', style: TextStyle(color: Colors.white70, fontSize: 14)),
           const SizedBox(height: 8),
           Text(
-            _formatCurrency(totalBalance), // EXIBE A RENDA REAL
+            _formatCurrency(totalBalance),
             style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 20),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildIncomeExpenseInfo('Renda Base', _formatCurrency(totalBalance), Icons.account_balance_wallet),
-              _buildIncomeExpenseInfo('Gastos', 'R\$ 0,00', Icons.shopping_cart),
+              _buildIncomeExpenseInfo('Disponível', _formatCurrency(totalBalance), Icons.account_balance_wallet),
+              const Icon(Icons.trending_up, color: Colors.white24),
             ],
           )
         ],
@@ -152,7 +173,6 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  // Widgets auxiliares (_buildIncomeExpenseInfo e _buildQuickAction) continuam aqui...
   Widget _buildIncomeExpenseInfo(String label, String value, IconData icon) {
     return Row(
       children: [
