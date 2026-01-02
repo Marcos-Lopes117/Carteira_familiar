@@ -14,9 +14,7 @@ class ProfileRepository {
 
   // --- PERFIL ---
   Future<int> saveProfile(String name, double income) async {
-    return await _db
-        .into(_db.profiles)
-        .insert(
+    return await _db.into(_db.profiles).insert(
           ProfilesCompanion.insert(
             name: name,
             monthlyIncome: income,
@@ -40,9 +38,7 @@ class ProfileRepository {
     bool isIncome,
     String cat,
   ) async {
-    return await _db
-        .into(_db.transactions)
-        .insert(
+    return await _db.into(_db.transactions).insert(
           TransactionsCompanion.insert(
             description: desc,
             amount: val,
@@ -53,13 +49,13 @@ class ProfileRepository {
         );
   }
 
-  // STREAM: Essa é a "mágica". Ela observa a tabela de transações e perfil.
-  // Sempre que algo mudar, ela emite o novo saldo calculado.
+  // CORREÇÃO DA MÁGICA: Agora observamos a tabela de transações para o saldo atualizar sempre!
   Stream<double> watchCurrentBalance() {
-    return _db.select(_db.profiles).watchSingle().asyncMap((profile) async {
+    // Escutamos qualquer mudança na tabela de transações
+    return _db.select(_db.transactions).watch().asyncMap((_) async {
+      final profile = await getProfile();
       final baseIncome = profile?.monthlyIncome ?? 0.0;
 
-      // Busca todas as transações
       final allTransactions = await _db.select(_db.transactions).get();
 
       double totalItems = 0;
@@ -76,9 +72,15 @@ class ProfileRepository {
   }
 
   Stream<List<Transaction>> watchRecentTransactions() {
-  return (_db.select(_db.transactions)
-        ..orderBy([(t) => OrderingTerm(expression: t.date, mode: OrderingMode.desc)])
-        ..limit(10)) 
-      .watch();
-}
+    return (_db.select(_db.transactions)
+          ..orderBy(
+              [(t) => OrderingTerm(expression: t.date, mode: OrderingMode.desc)])
+          ..limit(10))
+        .watch();
+  }
+
+  // CORRIGIDO: de 'database' para '_db'
+  Future<void> deleteTransaction(int id) async {
+    await (_db.delete(_db.transactions)..where((t) => t.id.equals(id))).go();
+  }
 }

@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart'; 
 import '../../data/repositories/profile_repository.dart';
 import '../../providers/balance_provider.dart'; 
-import '../../data/local/app_database.dart'; // Import necessário para reconhecer 'Transaction'
+import '../../data/local/app_database.dart'; 
 import '../onboarding/onboarding_screen.dart';
 import 'widgets/add_transaction_modal.dart'; 
 
@@ -53,7 +53,7 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final balanceAsync = ref.watch(balanceStreamProvider);
-    final transactionsAsync = ref.watch(recentTransactionsProvider); // Escutando transações
+    final transactionsAsync = ref.watch(recentTransactionsProvider); 
     final profileRepo = ref.watch(profileRepositoryProvider);
 
     return Scaffold(
@@ -103,7 +103,7 @@ class HomeScreen extends ConsumerWidget {
                 ),
                 GestureDetector(
                   onTap: () => _openAddTransaction(context, isIncome: false),
-                child: _buildQuickAction(context, Icons.remove, 'Saída', Colors.red),
+                  child: _buildQuickAction(context, Icons.remove, 'Saída', Colors.red),
                 ),
                 _buildQuickAction(context, Icons.assessment, 'Relatório', Colors.blue),
               ],
@@ -121,7 +121,6 @@ class HomeScreen extends ConsumerWidget {
               ],
             ),
 
-            // --- LISTA DE TRANSAÇÕES REAIS ---
             transactionsAsync.when(
               data: (transactions) {
                 if (transactions.isEmpty) {
@@ -139,28 +138,59 @@ class HomeScreen extends ConsumerWidget {
                   itemCount: transactions.length,
                   itemBuilder: (context, index) {
                     final tx = transactions[index];
-                    return ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: CircleAvatar(
-                        backgroundColor: tx.isIncome 
-                            ? Colors.green.withOpacity(0.1) 
-                            : Colors.red.withOpacity(0.1),
-                        child: Icon(
-                          tx.isIncome ? Icons.arrow_upward : Icons.arrow_downward,
-                          color: tx.isIncome ? Colors.green : Colors.red,
-                          size: 20,
+                    
+                    // --- IMPLEMENTAÇÃO DO DISMISSIBLE (DESLIZAR PARA EXCLUIR) ---
+                    return Dismissible(
+                      key: Key(tx.id.toString()),
+                      direction: DismissDirection.endToStart,
+                      background: Container(
+                        alignment: Alignment.centerRight,
+                        padding: const EdgeInsets.only(right: 20),
+                        margin: const EdgeInsets.symmetric(vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.redAccent,
+                          borderRadius: BorderRadius.circular(12),
                         ),
+                        child: const Icon(Icons.delete, color: Colors.white),
                       ),
-                      title: Text(
-                        tx.description, 
-                        style: const TextStyle(fontWeight: FontWeight.w600)
-                      ),
-                      subtitle: Text(DateFormat('dd/MM/yyyy').format(tx.date)),
-                      trailing: Text(
-                        (tx.isIncome ? '+ ' : '- ') + _formatCurrency(tx.amount),
-                        style: TextStyle(
-                          color: tx.isIncome ? Colors.green : Colors.red,
-                          fontWeight: FontWeight.bold,
+                      confirmDismiss: (direction) async {
+                        // Opcional: Adicionar uma confirmação antes de excluir
+                        return true;
+                      },
+                      onDismissed: (direction) {
+                        // Chama o repositório para deletar do banco
+                        ref.read(profileRepositoryProvider).deleteTransaction(tx.id);
+                        
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('${tx.description} excluído'),
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                      },
+                      child: ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: CircleAvatar(
+                          backgroundColor: tx.isIncome 
+                              ? Colors.green.withOpacity(0.1) 
+                              : Colors.red.withOpacity(0.1),
+                          child: Icon(
+                            tx.isIncome ? Icons.arrow_upward : Icons.arrow_downward,
+                            color: tx.isIncome ? Colors.green : Colors.red,
+                            size: 20,
+                          ),
+                        ),
+                        title: Text(
+                          tx.description, 
+                          style: const TextStyle(fontWeight: FontWeight.w600)
+                        ),
+                        subtitle: Text(DateFormat('dd/MM/yyyy').format(tx.date)),
+                        trailing: Text(
+                          (tx.isIncome ? '+ ' : '- ') + _formatCurrency(tx.amount),
+                          style: TextStyle(
+                            color: tx.isIncome ? Colors.green : Colors.red,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     );
@@ -170,7 +200,7 @@ class HomeScreen extends ConsumerWidget {
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (err, stack) => const Text('Erro ao carregar histórico'),
             ),
-            const SizedBox(height: 80), // Espaço para não cobrir pelo FAB
+            const SizedBox(height: 80), 
           ],
         ),
       ),
