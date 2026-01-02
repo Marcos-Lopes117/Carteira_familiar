@@ -8,3 +8,10 @@ final balanceStreamProvider = StreamProvider<double>((ref) {
 final recentTransactionsProvider = StreamProvider<List<Transaction>>((ref) {
   return ref.watch(profileRepositoryProvider).watchRecentTransactions();
 });
+final expenseSummaryProvider = StreamProvider<Map<String, double>>((ref) {
+  return ref.watch(profileRepositoryProvider).watchCategoryTotals(isIncome: false);
+});
+
+final incomeSummaryProvider = StreamProvider<Map<String, double>>((ref) {
+  return ref.watch(profileRepositoryProvider).watchCategoryTotals(isIncome: true);
+});

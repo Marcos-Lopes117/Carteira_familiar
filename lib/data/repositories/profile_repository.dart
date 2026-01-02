@@ -14,7 +14,9 @@ class ProfileRepository {
 
   // --- PERFIL ---
   Future<int> saveProfile(String name, double income) async {
-    return await _db.into(_db.profiles).insert(
+    return await _db
+        .into(_db.profiles)
+        .insert(
           ProfilesCompanion.insert(
             name: name,
             monthlyIncome: income,
@@ -38,7 +40,9 @@ class ProfileRepository {
     bool isIncome,
     String cat,
   ) async {
-    return await _db.into(_db.transactions).insert(
+    return await _db
+        .into(_db.transactions)
+        .insert(
           TransactionsCompanion.insert(
             description: desc,
             amount: val,
@@ -47,6 +51,22 @@ class ProfileRepository {
             category: cat,
           ),
         );
+  }
+
+  Stream<Map<String, double>> watchCategoryTotals({required bool isIncome}) {
+    return _db.select(_db.transactions).watch().map((transactions) {
+      final Map<String, double> totals = {};
+
+      // Filtra apenas pelo tipo (Entrada ou Saída)
+      final filtered = transactions.where((t) => t.isIncome == isIncome);
+
+      for (var tx in filtered) {
+        totals[tx.category] = (totals[tx.category] ?? 0) + tx.amount;
+      }
+
+      // O Map resultante conterá apenas categorias com valores > 0
+      return totals;
+    });
   }
 
   // CORREÇÃO DA MÁGICA: Agora observamos a tabela de transações para o saldo atualizar sempre!
@@ -73,8 +93,9 @@ class ProfileRepository {
 
   Stream<List<Transaction>> watchRecentTransactions() {
     return (_db.select(_db.transactions)
-          ..orderBy(
-              [(t) => OrderingTerm(expression: t.date, mode: OrderingMode.desc)])
+          ..orderBy([
+            (t) => OrderingTerm(expression: t.date, mode: OrderingMode.desc),
+          ])
           ..limit(10))
         .watch();
   }

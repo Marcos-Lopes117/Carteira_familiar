@@ -4,8 +4,13 @@ import 'package:intl/intl.dart';
 import '../../data/repositories/profile_repository.dart';
 import '../../providers/balance_provider.dart'; 
 import '../../data/local/app_database.dart'; 
+import '../../core/constants/categories.dart';
 import '../onboarding/onboarding_screen.dart';
-import 'widgets/add_transaction_modal.dart'; 
+import 'widgets/add_transaction_modal.dart';
+import 'widgets/category_chart.dart'; // Certifique-se de criar este arquivo
+
+// Provider local para alternar o tipo de gráfico na Home
+final chartTypeProvider = StateProvider<bool>((ref) => false); // false = Saídas, true = Entradas
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -55,6 +60,10 @@ class HomeScreen extends ConsumerWidget {
     final balanceAsync = ref.watch(balanceStreamProvider);
     final transactionsAsync = ref.watch(recentTransactionsProvider); 
     final profileRepo = ref.watch(profileRepositoryProvider);
+    
+    // Providers do Gráfico
+    final isIncomeChart = ref.watch(chartTypeProvider);
+    final summaryAsync = ref.watch(isIncomeChart ? incomeSummaryProvider : expenseSummaryProvider);
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -108,7 +117,38 @@ class HomeScreen extends ConsumerWidget {
                 _buildQuickAction(context, Icons.assessment, 'Relatório', Colors.blue),
               ],
             ),
-            
+
+            const SizedBox(height: 32),
+
+            // --- SEÇÃO DO GRÁFICO DINÂMICO ---
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  isIncomeChart ? 'Distribuição de Renda' : 'Distribuição de Gastos',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                Row(
+                  children: [
+                    Icon(Icons.trending_down, size: 16, color: !isIncomeChart ? Colors.red : Colors.grey),
+                    Switch(
+                      value: isIncomeChart,
+                      onChanged: (val) => ref.read(chartTypeProvider.notifier).state = val,
+                      activeColor: Colors.green,
+                      inactiveTrackColor: Colors.red.withOpacity(0.2),
+                    ),
+                    Icon(Icons.trending_up, size: 16, color: isIncomeChart ? Colors.green : Colors.grey),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            summaryAsync.when(
+              data: (data) => CategoryChart(data: data, isIncome: isIncomeChart),
+              loading: () => const SizedBox(height: 200, child: Center(child: CircularProgressIndicator())),
+              error: (err, stack) => const Text('Erro ao carregar gráfico'),
+            ),
+
             const SizedBox(height: 32),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -138,8 +178,11 @@ class HomeScreen extends ConsumerWidget {
                   itemCount: transactions.length,
                   itemBuilder: (context, index) {
                     final tx = transactions[index];
-                    
-                    // --- IMPLEMENTAÇÃO DO DISMISSIBLE (DESLIZAR PARA EXCLUIR) ---
+                    final category = appCategories.firstWhere(
+                      (c) => c.name == tx.category,
+                      orElse: () => appCategories.last,
+                    );
+
                     return Dismissible(
                       key: Key(tx.id.toString()),
                       direction: DismissDirection.endToStart,
@@ -153,38 +196,20 @@ class HomeScreen extends ConsumerWidget {
                         ),
                         child: const Icon(Icons.delete, color: Colors.white),
                       ),
-                      confirmDismiss: (direction) async {
-                        // Opcional: Adicionar uma confirmação antes de excluir
-                        return true;
-                      },
                       onDismissed: (direction) {
-                        // Chama o repositório para deletar do banco
                         ref.read(profileRepositoryProvider).deleteTransaction(tx.id);
-                        
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('${tx.description} excluído'),
-                            duration: const Duration(seconds: 2),
-                          ),
+                          SnackBar(content: Text('${tx.description} excluído')),
                         );
                       },
                       child: ListTile(
                         contentPadding: EdgeInsets.zero,
                         leading: CircleAvatar(
-                          backgroundColor: tx.isIncome 
-                              ? Colors.green.withOpacity(0.1) 
-                              : Colors.red.withOpacity(0.1),
-                          child: Icon(
-                            tx.isIncome ? Icons.arrow_upward : Icons.arrow_downward,
-                            color: tx.isIncome ? Colors.green : Colors.red,
-                            size: 20,
-                          ),
+                          backgroundColor: category.color.withOpacity(0.1),
+                          child: Icon(category.icon, color: category.color, size: 20),
                         ),
-                        title: Text(
-                          tx.description, 
-                          style: const TextStyle(fontWeight: FontWeight.w600)
-                        ),
-                        subtitle: Text(DateFormat('dd/MM/yyyy').format(tx.date)),
+                        title: Text(tx.description, style: const TextStyle(fontWeight: FontWeight.w600)),
+                        subtitle: Text('${DateFormat('dd/MM/yyyy').format(tx.date)} • ${category.name}'),
                         trailing: Text(
                           (tx.isIncome ? '+ ' : '- ') + _formatCurrency(tx.amount),
                           style: TextStyle(
@@ -211,6 +236,7 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
+  // ... (mantenha os widgets auxiliares _buildBalanceCard, _buildIncomeExpenseInfo e _buildQuickAction)
   Widget _buildBalanceCard(BuildContext context, double totalBalance) {
     return Container(
       width: double.infinity,
