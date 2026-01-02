@@ -13,14 +13,14 @@ class ProfileRepository {
   ProfileRepository(this._db);
 
   // --- PERFIL ---
-  Future<int> saveProfile(String name, double income) async {
+  Future<int> saveProfile(String name, double income, double goal) async {
     return await _db
         .into(_db.profiles)
         .insert(
           ProfilesCompanion.insert(
             name: name,
             monthlyIncome: income,
-            savingsGoal: 0.0,
+            savingsGoal: goal,
           ),
         );
   }
@@ -98,6 +98,10 @@ class ProfileRepository {
           ])
           ..limit(10))
         .watch();
+  }
+
+  Stream<Profile?> watchProfile() {
+    return _db.select(_db.profiles).watchSingleOrNull();
   }
 
   // CORRIGIDO: de 'database' para '_db'

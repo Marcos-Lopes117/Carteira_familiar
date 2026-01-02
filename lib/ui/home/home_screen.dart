@@ -7,16 +7,87 @@ import '../../data/local/app_database.dart';
 import '../../core/constants/categories.dart';
 import '../onboarding/onboarding_screen.dart';
 import 'widgets/add_transaction_modal.dart';
-import 'widgets/category_chart.dart'; // Certifique-se de criar este arquivo
+import 'widgets/category_chart.dart';
+import 'widgets/goals_card.dart';
 
-// Provider local para alternar o tipo de gráfico na Home
-final chartTypeProvider = StateProvider<bool>((ref) => false); // false = Saídas, true = Entradas
+final chartTypeProvider = StateProvider<bool>((ref) => false);
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   String _formatCurrency(double value) {
     return NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$').format(value);
+  }
+
+  // --- NOVO: MODAL PARA EDITAR PERFIL E META ---
+  void _showEditProfileModal(BuildContext context, WidgetRef ref, Profile profile) {
+    final nameController = TextEditingController(text: profile.name);
+    final incomeController = TextEditingController(text: profile.monthlyIncome.toString());
+    final goalController = TextEditingController(text: profile.savingsGoal.toString());
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+          left: 20, right: 20, top: 20,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'Ajustar Perfil e Metas',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: nameController,
+              decoration: const InputDecoration(labelText: 'Sobrenome da Família', border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: incomeController,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(labelText: 'Renda Mensal Base', prefixText: 'R\$ ', border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: goalController,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(labelText: 'Meta de Economia', prefixText: 'R\$ ', border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: () async {
+                final name = nameController.text;
+                final income = double.tryParse(incomeController.text.replaceAll(',', '.')) ?? 0.0;
+                final goal = double.tryParse(goalController.text.replaceAll(',', '.')) ?? 0.0;
+
+                await ref.read(profileRepositoryProvider).saveProfile(name, income, goal);
+                
+                if (context.mounted) Navigator.pop(context);
+              },
+              style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
+              child: const Text('Salvar Alterações'),
+            ),
+            TextButton(
+              onPressed: () => {
+                Navigator.pop(context),
+                _confirmDelete(context, ref)
+              },
+              child: const Text('Resetar todos os dados', style: TextStyle(color: Colors.red)),
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
   }
 
   void _openAddTransaction(BuildContext context, {bool isIncome = false}) {
@@ -59,20 +130,29 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final balanceAsync = ref.watch(balanceStreamProvider);
     final transactionsAsync = ref.watch(recentTransactionsProvider); 
-    final profileRepo = ref.watch(profileRepositoryProvider);
-    
-    // Providers do Gráfico
+    final profileAsync = ref.watch(profileStreamProvider); 
     final isIncomeChart = ref.watch(chartTypeProvider);
     final summaryAsync = ref.watch(isIncomeChart ? incomeSummaryProvider : expenseSummaryProvider);
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: const Text('Minha Carteira'),
+        title: profileAsync.when(
+          data: (p) => Text('Família ${p?.name ?? ""}'),
+          loading: () => const Text('Carregando...'),
+          error: (_, __) => const Text('Minha Carteira'),
+        ),
         actions: [
-          IconButton(
-            onPressed: () => _confirmDelete(context, ref),
-            icon: const Icon(Icons.delete_forever, color: Colors.redAccent),
+          // Ícone de Configurações para editar o perfil/meta
+          profileAsync.when(
+            data: (profile) => profile != null 
+              ? IconButton(
+                  icon: const Icon(Icons.settings_outlined),
+                  onPressed: () => _showEditProfileModal(context, ref, profile),
+                )
+              : const SizedBox.shrink(),
+            loading: () => const SizedBox.shrink(),
+            error: (_, __) => const SizedBox.shrink(),
           ),
         ],
       ),
@@ -81,28 +161,43 @@ class HomeScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            FutureBuilder(
-              future: profileRepo.getProfile(),
-              builder: (context, snapshot) {
-                final name = snapshot.data?.name ?? 'Família';
-                return Text(
-                  'Olá, Família $name!',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                );
-              },
+            // Saudação reativa
+            profileAsync.when(
+              data: (profile) => Text(
+                'Carteira ${profile?.name}!',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              loading: () => const SizedBox(height: 24),
+              error: (_, __) => const Text('Olá!'),
             ),
             const SizedBox(height: 20),
             
+            // Card de Saldo
             balanceAsync.when(
               data: (balance) => _buildBalanceCard(context, balance),
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (err, stack) => const Text('Erro ao calcular saldo'),
             ),
             
+            const SizedBox(height: 16),
+
+            // Seção de Metas Reativa
+            profileAsync.when(
+              data: (profile) {
+                if (profile == null || profile.savingsGoal <= 0) return const SizedBox.shrink();
+                return balanceAsync.when(
+                  data: (balance) => GoalsCard(currentBalance: balance, goal: profile.savingsGoal),
+                  loading: () => const SizedBox.shrink(),
+                  error: (_, __) => const SizedBox.shrink(),
+                );
+              },
+              loading: () => const LinearProgressIndicator(),
+              error: (_, __) => const SizedBox.shrink(),
+            ),
+
             const SizedBox(height: 24),
             
+            // Ações Rápidas
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
@@ -120,7 +215,7 @@ class HomeScreen extends ConsumerWidget {
 
             const SizedBox(height: 32),
 
-            // --- SEÇÃO DO GRÁFICO DINÂMICO ---
+            // Gráfico Dinâmico
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -236,7 +331,8 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  // ... (mantenha os widgets auxiliares _buildBalanceCard, _buildIncomeExpenseInfo e _buildQuickAction)
+  // --- Widgets Auxiliares ---
+
   Widget _buildBalanceCard(BuildContext context, double totalBalance) {
     return Container(
       width: double.infinity,
