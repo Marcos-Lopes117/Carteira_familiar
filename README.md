@@ -79,3 +79,40 @@ Arquitetura: Repository Pattern para separação clara de lógica de dados e int
 # Conclusão
 
 Carteira Familiar não é apenas um projeto de estudo, mas um aplicativo funcional, pensado para resolver um problema real do dia a dia das famílias brasileiras, com foco em simplicidade, eficiência e privacidade.
+
+## ⚙️ Como Rodar o Projeto
+
+Siga os passos abaixo para configurar o ambiente e executar o aplicativo em seu emulador ou dispositivo físico:
+
+### 1. Pré-requisitos
+* Ter o **Flutter SDK** instalado (versão estável mais recente).
+* Ter um emulador (Android/iOS) ou dispositivo físico conectado.
+
+### 2. Clonar o Repositório
+```bash
+git clone [https://github.com/Marcos-Lopes117/Carteira_familiar.git](https://github.com/Marcos-Lopes117/Carteira_familiar.git)
+
+cd carteira_familiar
+```
+### 3. instalar as dependências
+```bash
+flutter pub get
+```
+### 4. Gerar Arquivos do Banco de Dados (Drift/Moor)
+Como o projeto utiliza geração de código para o banco de dados SQLite, execute o comando abaixo para gerar os arquivos necessários:
+
+```bash
+flutter pub run build_runner build --delete-conflicting-outputs
+```
+### 5. Executar o App ou criar o apk
+
+```bash 
+flutter run
+```
+
+ou
+
+```bash
+flutter build apk
+```
+Envie e instale o apk para o dispositivo desejado.
