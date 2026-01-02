@@ -45,67 +45,36 @@ Estado: Provider ou Riverpod
 Design: Material 3
 
 
-##  Planejamento e Economia
+## Funcionalidades Principais
+Onboarding Customizado: Configuração inicial do perfil com nome da família, renda mensal base e meta de economia.
 
-Acompanhamento da meta de economia
+Gestão de Transações: Cadastro intuitivo de Entradas e Saídas com seletor de categorias inteligente.
 
-Visualização do quanto já foi economizado no mês
+Dashboard Reativo:
 
-Apoio à quitação de dívidas (registro de gastos e compromissos)
+Saldo Geral: Atualização instantânea conforme transações são adicionadas ou removidas.
 
-##  Relatórios Simples
+Barra de Metas: Visualização gamificada do progresso em relação à meta de economia mensal.
 
-Resumo mensal
+Gráfico de Pizza Dinâmico: Análise visual de gastos e rendas agrupados por categoria (exibe apenas categorias com movimentações ativas).
 
-Totais por categoria
+Histórico de Atividades: Lista de transações recentes com ícones categorizados e suporte a Swipe-to-Delete (deslizar para excluir).
 
-Visualização intuitiva (cards e gráficos)
+Configurações de Perfil: Possibilidade de editar nome, renda e metas a qualquer momento através de um modal dedicado.
 
+## Tecnologias Utilizadas
+Linguagem: Dart
 
-##  Fluxo do Aplicativo
+Framework: Flutter
 
-Splash
+Gerenciamento de Estado: Riverpod (abordagem reativa com Streams).
 
-  ↓
-  
-Onboarding Financeiro (1ª vez)
+Banco de Dados Local: Drift (Moor) - SQLite para persistência de dados performática.
 
-  ↓
-  
-Home
+Gráficos: FL Chart.
 
- ├── Saldo atual
- 
- ├── Resumo mensal
- 
- ├── Lista de transações
- 
- └── Botão para nova transação
+Arquitetura: Repository Pattern para separação clara de lógica de dados e interface.
 
-
-##  Privacidade e Segurança
-
-Nenhum dado enviado para a internet
-
-Sem necessidade de login
-
-Sem coleta de informações pessoais externas
-
-Total controle do usuário sobre seus dados
-
-## Objetivo do Projeto (Portfólio)
-
-Este projeto foi desenvolvido para demonstrar:
-
-Arquitetura offline-first
-
-Persistência de dados local
-
-Organização de código
-
-UI/UX focado no usuário final
-
-Desenvolvimento mobile profissional com Flutter
 
 # Conclusão
 
